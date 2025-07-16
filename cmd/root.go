@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"bufio"
+
+	tui "cobra-cli/internal/tui"
 )
 
 var configDir string
@@ -108,98 +108,24 @@ func initConfigFile() {
 func ensureVault() {
 	vaults := notedConfig.GetStringSlice("vaults")
 	currentVault := notedConfig.GetString("current_vault")
-	reader := bufio.NewReader(os.Stdin)
 	if currentVault == "" || !contains(vaults, currentVault) {
-		fmt.Println("No vault is currently set.")
-		for {
-			if len(vaults) > 0 {
-				fmt.Println("Available vaults:")
-				for i, v := range vaults {
-					fmt.Printf("  [%d] %s\n", i+1, v)
-				}
-				fmt.Print("Select a vault by number, or type a new path to create a new vault: ")
-				input, _ := reader.ReadString('\n')
-				input = strings.TrimSpace(input)
-				if input == "" {
-					fmt.Println("Vault path cannot be empty. Please try again.")
-					continue
-				}
-				idx, err := parseIndex(input, len(vaults))
-				if err == nil {
-					currentVault = vaults[idx]
-				} else {
-					currentVault = input
-					if _, err := os.Stat(currentVault); os.IsNotExist(err) {
-						fmt.Printf("Vault directory '%s' does not exist. Create it? [y/N]: ", currentVault)
-						confirm, _ := reader.ReadString('\n')
-						if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-							err := os.MkdirAll(currentVault, 0o755)
-							if err != nil {
-								fmt.Println("Failed to create vault directory:", err)
-								continue
-							}
-							fmt.Println("Created vault at", currentVault)
-						} else {
-							fmt.Println("Aborted. No vault set.")
-							os.Exit(0)
-						}
-					}
-					if !contains(vaults, currentVault) {
-						vaults = append(vaults, currentVault)
-					}
-				}
-			} else {
-				// No vaults exist, must enter a new path
-				for {
-					fmt.Print("Enter a path for your new vault: ")
-					input, _ := reader.ReadString('\n')
-					input = strings.TrimSpace(input)
-					if input == "" {
-						fmt.Println("Vault path cannot be empty. Please try again.")
-						continue
-					}
-					currentVault = input
-					if _, err := os.Stat(currentVault); os.IsNotExist(err) {
-						fmt.Printf("Vault directory '%s' does not exist. Create it? [y/N]: ", currentVault)
-						confirm, _ := reader.ReadString('\n')
-						if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-							err := os.MkdirAll(currentVault, 0o755)
-							if err != nil {
-								fmt.Println("Failed to create vault directory:", err)
-								continue
-							}
-							fmt.Println("Created vault at", currentVault)
-							break
-						} else {
-							fmt.Println("Aborted. No vault set.")
-							os.Exit(0)
-						}
-					} else {
-						break
-					}
-				}
-				if !contains(vaults, currentVault) {
-					vaults = append(vaults, currentVault)
-				}
-			}
-			notedConfig.Set("current_vault", currentVault)
-			notedConfig.Set("vaults", vaults)
-			err := notedConfig.WriteConfigAs(configFile)
-			if err != nil {
-				fmt.Println("Failed to update config:", err)
-				os.Exit(1)
-			}
-			fmt.Println("Vault set to:", currentVault)
-			return
+		// Launch Bubble Tea TUI for vault selection/creation
+		selectedVault, err := tui.LaunchVaultTUI(vaults, currentVault)
+		if err != nil {
+			fmt.Println("Error selecting vault:", err)
+			os.Exit(1)
 		}
-		notedConfig.Set("current_vault", currentVault)
+		if !contains(vaults, selectedVault) {
+			vaults = append(vaults, selectedVault)
+		}
+		notedConfig.Set("current_vault", selectedVault)
 		notedConfig.Set("vaults", vaults)
-		err := notedConfig.WriteConfigAs(configFile)
+		err = notedConfig.WriteConfigAs(configFile)
 		if err != nil {
 			fmt.Println("Failed to update config:", err)
 			os.Exit(1)
 		}
-		fmt.Println("Vault set to:", currentVault)
+		fmt.Println("Vault set to:", selectedVault)
 		return
 	}
 	fmt.Println("Current vault:", currentVault)
