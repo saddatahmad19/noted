@@ -1,0 +1,40 @@
+# Binaries
+/noted
+/noted.exe
+/noted.out
+/cobra-cli
+
+# Build output
+*.exe
+*.out
+*.test
+
+# Dependency directories (if vendoring is used)
+/vendor/
+
+# OS/Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.bak
+*.log
+
+# User data (if used for test or output, adjust as needed)
+~/Documents/
+
+# Go coverage files
+coverage.out
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# Config (if you ever add local config here)
+.env
+
+# Project-specific files to ignore
+GOAL.md
+
